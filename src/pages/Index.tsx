@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { analysisService, AnalysisResult } from '@/services/analysisService';
 import { AppHeader } from '@/components/AppHeader';
 import { FeatureCards } from '@/components/FeatureCards';
 import { UploadSection } from '@/components/UploadSection';
@@ -12,11 +11,10 @@ import { TipsCard } from '@/components/TipsCard';
 import { AppFooter } from '@/components/AppFooter';
 import { CameraCapture } from '@/components/CameraCapture';
 import { Button } from '@/components/ui/button';
-import { LogIn } from 'lucide-react';
+import { LogIn, Zap } from 'lucide-react';
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -61,11 +59,6 @@ const Index = () => {
         title: "تم تحديد الملف",
         description: "يمكنك الآن بدء التحليل"
       });
-
-      // التحليل التلقائي إذا كان مفعلاً في الإعدادات
-      if (userSettings?.auto_analysis) {
-        handleAnalyze(file);
-      }
     }
   };
 
@@ -74,10 +67,8 @@ const Index = () => {
     setShowCamera(false);
   };
 
-  const handleAnalyze = async (fileToAnalyze?: File) => {
-    const file = fileToAnalyze || selectedFile;
-    
-    if (!file) {
+  const handleAnalyze = () => {
+    if (!selectedFile) {
       toast({
         title: "لا يوجد ملف محدد",
         description: "يرجى اختيار ملف فيديو أو صورة للتحليل.",
@@ -95,58 +86,17 @@ const Index = () => {
       return;
     }
 
-    setIsAnalyzing(true);
-    
-    try {
-      // رفع الملف أولاً
-      await analysisService.uploadFile(file, user.id);
-      
-      // إجراء التحليل
-      const result = await analysisService.analyzeFile(file);
-      
-      // حفظ النتائج إذا كان مفعلاً في الإعدادات
-      let savedResult;
-      if (userSettings?.save_results) {
-        savedResult = await analysisService.saveAnalysisResult(user.id, file, result);
-      }
-      
-      // تشغيل الإشعار الصوتي إذا كان مفعلاً
-      if (userSettings?.sound_notifications) {
-        // يمكن إضافة صوت الإشعار هنا
-        console.log('Playing notification sound');
-      }
-      
-      navigate('/analysis-results', {
-        state: { 
-          file, 
-          result,
-          savedResult: savedResult || null
-        }
-      });
-      
-      toast({
-        title: "تم إكمال التحليل",
-        description: "تم تحليل العينة بنجاح، اطلع على النتائج"
-      });
-    } catch (error: any) {
-      console.error('Analysis error:', error);
-      toast({
-        title: "فشل التحليل",
-        description: error.message || "حدث خطأ أثناء التحليل. يرجى المحاولة مرة أخرى.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
+    // Navigate to analysis page with the selected file
+    navigate('/analysis', { state: { file: selectedFile } });
   };
 
   // عرض شاشة التحميل أثناء التحقق من المصادقة
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0D1B2A] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">جاري التحميل...</p>
+          <div className="w-8 h-8 border-4 border-[#00B4D8] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -155,11 +105,11 @@ const Index = () => {
   // إذا لم يكن المستخدم مسجل دخول، عرض دعوة لتسجيل الدخول
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0D1B2A] flex items-center justify-center">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">مرحباً بك في SpermVision AI</h2>
-          <p className="text-muted-foreground">يرجى تسجيل الدخول للوصول إلى جميع الميزات</p>
-          <Button onClick={() => navigate('/auth')} size="lg">
+          <h2 className="text-2xl font-bold text-white">مرحباً بك في SpermVision AI</h2>
+          <p className="text-gray-400">يرجى تسجيل الدخول للوصول إلى جميع الميزات</p>
+          <Button onClick={() => navigate('/auth')} size="lg" className="bg-[#00B4D8] hover:bg-[#00B4D8]/80">
             <LogIn className="w-4 h-4 mr-2" />
             تسجيل الدخول
           </Button>
@@ -178,7 +128,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0D1B2A]">
       <AppHeader />
 
       <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
@@ -190,16 +140,30 @@ const Index = () => {
           <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
             <UploadSection
               selectedFile={selectedFile}
-              isAnalyzing={isAnalyzing}
+              isAnalyzing={false}
               onFileSelect={handleFileSelect}
               onCameraClick={() => setShowCamera(true)}
-              onAnalyze={() => handleAnalyze()}
+              onAnalyze={handleAnalyze}
             />
+            
+            {/* Start Analysis Button - Show when file is selected */}
+            {selectedFile && (
+              <div className="mt-6 flex justify-center">
+                <Button
+                  onClick={handleAnalyze}
+                  className="bg-[#00B4D8] hover:bg-[#00B4D8]/80 text-white px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  size="lg"
+                >
+                  <Zap className="w-5 h-5 mr-2" />
+                  بدء التحليل
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
             <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <MediaPreview file={selectedFile} isAnalyzing={isAnalyzing} />
+              <MediaPreview file={selectedFile} isAnalyzing={false} />
             </div>
             <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
               <TipsCard />

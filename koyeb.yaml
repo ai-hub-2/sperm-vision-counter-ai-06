@@ -17,7 +17,7 @@ services:
       - key: VITE_SUPABASE_URL
         value: https://bhczvusibhuvuvgwoezb.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
-        value: your_supabase_anon_key_here
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoY3p2dXNpYmh1dnV2Z3dvZXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzODQyNDMsImV4cCI6MjA2Njk2MDI0M30.M073euHkdpLM9xlYfT3tSui_0TRXB1mq3JjYiF8dH20
     health_check:
       http:
         path: /
@@ -30,4 +30,4 @@ services:
       - fra
     scaling:
       min: 1
-      max: 2
+      max: 3

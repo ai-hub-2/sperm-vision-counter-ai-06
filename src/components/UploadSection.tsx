@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { FileUpload } from '@/components/FileUpload';
-import { CameraButton } from '@/components/CameraButton';
+import { MediaUploadCard } from '@/components/MediaUploadCard';
 import { AnalysisButton } from '@/components/AnalysisButton';
 
 interface UploadSectionProps {
@@ -21,22 +21,25 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <FileUpload
-        onFileSelect={onFileSelect}
-        selectedFile={selectedFile}
-        isProcessing={isAnalyzing}
-      />
-      
       {selectedFile ? (
+        <FileUpload
+          onFileSelect={onFileSelect}
+          selectedFile={selectedFile}
+          isProcessing={isAnalyzing}
+        />
+      ) : (
+        <MediaUploadCard
+          onFileSelect={(file) => onFileSelect(file)}
+          onCameraClick={onCameraClick}
+        />
+      )}
+      
+      {selectedFile && (
         <div className="flex justify-center">
           <AnalysisButton 
             isAnalyzing={isAnalyzing}
             onClick={onAnalyze}
           />
-        </div>
-      ) : (
-        <div className="flex justify-center">
-          <CameraButton onClick={onCameraClick} />
         </div>
       )}
     </div>

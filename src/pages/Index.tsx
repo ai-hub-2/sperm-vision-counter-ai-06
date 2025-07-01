@@ -55,15 +55,11 @@ const Index = () => {
     setSelectedFile(file);
     if (file) {
       setShowCamera(false);
-      toast({
-        title: "تم تحديد الملف",
-        description: "يمكنك الآن بدء التحليل"
-      });
     }
   };
 
   const handleCameraCapture = (file: File) => {
-    setSelectedFile(file);
+    handleFileSelect(file);
     setShowCamera(false);
   };
 

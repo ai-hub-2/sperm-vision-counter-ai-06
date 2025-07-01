@@ -118,34 +118,39 @@ class AnalysisService {
         throw new Error(`Failed to fetch analysis history: ${error.message}`);
       }
 
-      return data.map(result => ({
-        id: result.id,
-        sperm_count: result.sperm_count,
-        motility_percentage: result.motility_percentage || 0,
-        morphology_percentage: result.morphology_percentage || 0,
-        concentration: result.concentration || 0,
-        confidence_score: result.confidence_score,
-        analysis_duration: result.analysis_duration,
-        image_quality: result.image_quality as 'excellent' | 'good' | 'fair' | 'poor',
-        detected_objects: Array.isArray(result.detected_objects) ? result.detected_objects : [],
-        progressive_motility_percentage: result.progressive_motility_percentage || 0,
-        non_progressive_motility_percentage: result.non_progressive_motility_percentage || 0,
-        immotile_percentage: result.immotile_percentage || 0,
-        vitality_percentage: result.vitality_percentage || 0,
-        head_defects_percentage: result.head_defects_percentage || 0,
-        midpiece_defects_percentage: result.midpiece_defects_percentage || 0,
-        tail_defects_percentage: result.tail_defects_percentage || 0,
-        volume_ml: result.volume_ml || 0,
-        ph_level: result.ph_level || 0,
-        leucocytes_count: result.leucocytes_count || 0,
-        who_classification: result.who_classification || 'normozoospermia',
-        analysis_notes: result.analysis_notes || '',
-        file_name: result.file_name,
-        file_type: result.file_type,
-        file_size: result.file_size,
-        file_url: result.file_url,
-        created_at: result.created_at
-      }));
+      return data.map(result => {
+        // Use type assertion to handle the extended properties
+        const extendedResult = result as any;
+        
+        return {
+          id: result.id,
+          sperm_count: result.sperm_count,
+          motility_percentage: result.motility_percentage || 0,
+          morphology_percentage: result.morphology_percentage || 0,
+          concentration: result.concentration || 0,
+          confidence_score: result.confidence_score,
+          analysis_duration: result.analysis_duration,
+          image_quality: result.image_quality as 'excellent' | 'good' | 'fair' | 'poor',
+          detected_objects: Array.isArray(result.detected_objects) ? result.detected_objects : [],
+          progressive_motility_percentage: extendedResult.progressive_motility_percentage || 0,
+          non_progressive_motility_percentage: extendedResult.non_progressive_motility_percentage || 0,
+          immotile_percentage: extendedResult.immotile_percentage || 0,
+          vitality_percentage: extendedResult.vitality_percentage || 0,
+          head_defects_percentage: extendedResult.head_defects_percentage || 0,
+          midpiece_defects_percentage: extendedResult.midpiece_defects_percentage || 0,
+          tail_defects_percentage: extendedResult.tail_defects_percentage || 0,
+          volume_ml: extendedResult.volume_ml || 0,
+          ph_level: extendedResult.ph_level || 0,
+          leucocytes_count: extendedResult.leucocytes_count || 0,
+          who_classification: extendedResult.who_classification || 'normozoospermia',
+          analysis_notes: extendedResult.analysis_notes || '',
+          file_name: result.file_name,
+          file_type: result.file_type,
+          file_size: result.file_size,
+          file_url: result.file_url,
+          created_at: result.created_at
+        };
+      });
 
     } catch (error: any) {
       console.error('Error fetching analysis history:', error);
@@ -182,6 +187,9 @@ class AnalysisService {
         return null;
       }
 
+      // Use type assertion to handle the extended properties
+      const extendedData = data as any;
+
       return {
         id: data.id,
         sperm_count: data.sperm_count,
@@ -192,18 +200,18 @@ class AnalysisService {
         analysis_duration: data.analysis_duration,
         image_quality: data.image_quality as 'excellent' | 'good' | 'fair' | 'poor',
         detected_objects: Array.isArray(data.detected_objects) ? data.detected_objects : [],
-        progressive_motility_percentage: data.progressive_motility_percentage || 0,
-        non_progressive_motility_percentage: data.non_progressive_motility_percentage || 0,
-        immotile_percentage: data.immotile_percentage || 0,
-        vitality_percentage: data.vitality_percentage || 0,
-        head_defects_percentage: data.head_defects_percentage || 0,
-        midpiece_defects_percentage: data.midpiece_defects_percentage || 0,
-        tail_defects_percentage: data.tail_defects_percentage || 0,
-        volume_ml: data.volume_ml || 0,
-        ph_level: data.ph_level || 0,
-        leucocytes_count: data.leucocytes_count || 0,
-        who_classification: data.who_classification || 'normozoospermia',
-        analysis_notes: data.analysis_notes || '',
+        progressive_motility_percentage: extendedData.progressive_motility_percentage || 0,
+        non_progressive_motility_percentage: extendedData.non_progressive_motility_percentage || 0,
+        immotile_percentage: extendedData.immotile_percentage || 0,
+        vitality_percentage: extendedData.vitality_percentage || 0,
+        head_defects_percentage: extendedData.head_defects_percentage || 0,
+        midpiece_defects_percentage: extendedData.midpiece_defects_percentage || 0,
+        tail_defects_percentage: extendedData.tail_defects_percentage || 0,
+        volume_ml: extendedData.volume_ml || 0,
+        ph_level: extendedData.ph_level || 0,
+        leucocytes_count: extendedData.leucocytes_count || 0,
+        who_classification: extendedData.who_classification || 'normozoospermia',
+        analysis_notes: extendedData.analysis_notes || '',
         file_name: data.file_name,
         file_type: data.file_type,
         file_size: data.file_size,

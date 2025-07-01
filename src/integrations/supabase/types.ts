@@ -12,6 +12,7 @@ export type Database = {
       sperm_analysis_results: {
         Row: {
           analysis_duration: number
+          analysis_notes: string | null
           concentration: number | null
           confidence_score: number
           created_at: string
@@ -20,16 +21,28 @@ export type Database = {
           file_size: number
           file_type: string
           file_url: string
+          head_defects_percentage: number | null
           id: string
           image_quality: string | null
+          immotile_percentage: number | null
+          leucocytes_count: number | null
+          midpiece_defects_percentage: number | null
           morphology_percentage: number | null
           motility_percentage: number | null
+          non_progressive_motility_percentage: number | null
+          ph_level: number | null
+          progressive_motility_percentage: number | null
           sperm_count: number
+          tail_defects_percentage: number | null
           updated_at: string
           user_id: string
+          vitality_percentage: number | null
+          volume_ml: number | null
+          who_classification: string | null
         }
         Insert: {
           analysis_duration: number
+          analysis_notes?: string | null
           concentration?: number | null
           confidence_score: number
           created_at?: string
@@ -38,16 +51,28 @@ export type Database = {
           file_size: number
           file_type: string
           file_url: string
+          head_defects_percentage?: number | null
           id?: string
           image_quality?: string | null
+          immotile_percentage?: number | null
+          leucocytes_count?: number | null
+          midpiece_defects_percentage?: number | null
           morphology_percentage?: number | null
           motility_percentage?: number | null
+          non_progressive_motility_percentage?: number | null
+          ph_level?: number | null
+          progressive_motility_percentage?: number | null
           sperm_count?: number
+          tail_defects_percentage?: number | null
           updated_at?: string
           user_id: string
+          vitality_percentage?: number | null
+          volume_ml?: number | null
+          who_classification?: string | null
         }
         Update: {
           analysis_duration?: number
+          analysis_notes?: string | null
           concentration?: number | null
           confidence_score?: number
           created_at?: string
@@ -56,13 +81,24 @@ export type Database = {
           file_size?: number
           file_type?: string
           file_url?: string
+          head_defects_percentage?: number | null
           id?: string
           image_quality?: string | null
+          immotile_percentage?: number | null
+          leucocytes_count?: number | null
+          midpiece_defects_percentage?: number | null
           morphology_percentage?: number | null
           motility_percentage?: number | null
+          non_progressive_motility_percentage?: number | null
+          ph_level?: number | null
+          progressive_motility_percentage?: number | null
           sperm_count?: number
+          tail_defects_percentage?: number | null
           updated_at?: string
           user_id?: string
+          vitality_percentage?: number | null
+          volume_ml?: number | null
+          who_classification?: string | null
         }
         Relationships: []
       }

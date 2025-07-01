@@ -18,6 +18,8 @@ services:
         value: https://bhczvusibhuvuvgwoezb.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoY3p2dXNpYmh1dnV2Z3dvZXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzODQyNDMsImV4cCI6MjA2Njk2MDI0M30.M073euHkdpLM9xlYfT3tSui_0TRXB1mq3JjYiF8dH20
+      - key: NPM_CONFIG_PRODUCTION
+        value: false
     health_check:
       http:
         path: /

@@ -1,317 +1,312 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, Eye, Zap } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { SavedAnalysisResult } from '@/services/analysisService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-
-interface AnalysisResult {
-  sperm_count: number;
-  confidence?: number;
-  analysis_time?: number;
-  image_quality?: 'excellent' | 'good' | 'fair' | 'poor';
-}
-
-interface LocationState {
-  file: File;
-  result?: AnalysisResult;
-}
+import { ArrowLeft, Download, Share2, FileText } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const AnalysisResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { file, result: initialResult } = (location.state as LocationState) || {};
+  const { user } = useAuth();
+  const { toast } = useToast();
   
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [isAnalyzing, setIsAnalyzing] = useState(!initialResult);
-  const [result, setResult] = useState<AnalysisResult | null>(initialResult || null);
-  const [timeRemaining, setTimeRemaining] = useState(5);
-  const [detectionBoxes, setDetectionBoxes] = useState<Array<{x: number, y: number, width: number, height: number}>>([]);
-  
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [result, setResult] = useState<SavedAnalysisResult | null>(null);
 
   useEffect(() => {
-    if (!file) {
+    const analysisResult = location.state?.result as SavedAnalysisResult;
+    
+    if (!analysisResult || !user) {
       navigate('/');
       return;
     }
-
-    const url = URL.createObjectURL(file);
-    setMediaUrl(url);
     
-    return () => URL.revokeObjectURL(url);
-  }, [file, navigate]);
+    setResult(analysisResult);
+  }, [location.state, user, navigate]);
 
-  useEffect(() => {
-    if (!isAnalyzing) return;
+  const handleExportPDF = () => {
+    if (!result) return;
+    
+    // Create a simple text report for now
+    const reportContent = `
+تقرير تحليل العينة المنوية
+============================
 
-    const interval = setInterval(() => {
-      setAnalysisProgress(prev => {
-        if (prev >= 100) {
-          setIsAnalyzing(false);
-          // Simulate final results
-          setResult({
-            sperm_count: Math.floor(Math.random() * 200) + 10,
-            confidence: 85 + Math.random() * 10,
-            analysis_time: 4.2,
-            image_quality: 'excellent'
-          });
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 2;
+معلومات الملف:
+- اسم الملف: ${result.file_name}
+- تاريخ التحليل: ${new Date(result.created_at).toLocaleDateString('ar')}
+- مدة التحليل: ${result.analysis_duration} ثانية
+
+النتائج:
+- عدد الحيوانات المنوية: ${result.sperm_count.toLocaleString()}
+- نسبة الحركة: ${result.motility_percentage}%
+- نسبة الشكل الطبيعي: ${result.morphology_percentage}%
+- التركيز: ${result.concentration} مليون/مل
+- دقة التحليل: ${result.confidence_score}%
+- جودة الصورة: ${result.image_quality}
+
+تم إنشاء هذا التقرير بواسطة SpermVision AI
+    `;
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sperm_analysis_${new Date().getTime()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "تم تصدير التقرير",
+      description: "تم حفظ التقرير على جهازك"
+    });
+  };
+
+  const handleShare = async () => {
+    if (!result) return;
+
+    const shareText = `نتائج تحليل العينة المنوية:
+- عدد الخلايا: ${result.sperm_count.toLocaleString()}
+- الحركة: ${result.motility_percentage}%
+- دقة التحليل: ${result.confidence_score}%
+
+تم التحليل بواسطة SpermVision AI`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'نتائج تحليل العينة المنوية',
+          text: shareText,
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareText);
+      toast({
+        title: "تم النسخ",
+        description: "تم نسخ النتائج إلى الحافظة"
       });
-
-      setTimeRemaining(prev => Math.max(0, prev - 0.1));
-      
-      // Simulate AI detection boxes
-      if (Math.random() < 0.3) {
-        setDetectionBoxes(prev => [
-          ...prev.slice(-5), // Keep last 5 boxes
-          {
-            x: Math.random() * 80 + 10,
-            y: Math.random() * 60 + 20,
-            width: Math.random() * 8 + 4,
-            height: Math.random() * 8 + 4
-          }
-        ]);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isAnalyzing]);
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
     }
   };
 
-  const restart = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play();
-      setIsPlaying(true);
+  const getQualityColor = (quality: string) => {
+    switch (quality) {
+      case 'excellent': return 'bg-green-500';
+      case 'good': return 'bg-blue-500';
+      case 'fair': return 'bg-yellow-500';
+      case 'poor': return 'bg-red-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  if (!file || !mediaUrl) {
+  const getQualityText = (quality: string) => {
+    switch (quality) {
+      case 'excellent': return 'ممتازة';
+      case 'good': return 'جيدة';
+      case 'fair': return 'متوسطة';
+      case 'poor': return 'ضعيفة';
+      default: return 'غير محدد';
+    }
+  };
+
+  if (!result) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card>
-          <CardContent className="p-8">
-            <p className="text-center text-muted-foreground">لا توجد بيانات للتحليل</p>
-            <Button onClick={() => navigate('/')} className="mt-4 w-full">
-              العودة للصفحة الرئيسية
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#0D1B2A] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white text-lg mb-4">لم يتم العثور على نتائج التحليل</p>
+          <Button onClick={() => navigate('/')} className="bg-[#00B4D8] hover:bg-[#00B4D8]/80">
+            العودة للرئيسية
+          </Button>
+        </div>
       </div>
     );
   }
 
-  const isVideo = file.type.startsWith('video/');
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/')}
-              className="gap-2"
+    <div className="min-h-screen bg-[#0D1B2A] p-4">
+      <div className="container mx-auto max-w-4xl space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/')}
+            className="text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            العودة
+          </Button>
+          
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-white">نتائج التحليل</h1>
+            <p className="text-gray-400">تحليل مفصل للعينة المنوية</p>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              size="sm"
+              className="border-[#00B4D8] text-[#00B4D8] hover:bg-[#00B4D8]/10"
             >
-              <ArrowLeft className="w-4 h-4" />
-              العودة
+              <Share2 className="w-4 h-4" />
             </Button>
-            <div>
-              <h1 className="text-xl font-bold">نتائج التحليل</h1>
-              <p className="text-sm text-muted-foreground">تحليل العينة بالذكاء الاصطناعي</p>
-            </div>
+            <Button
+              onClick={handleExportPDF}
+              variant="outline"
+              size="sm"
+              className="border-[#00B4D8] text-[#00B4D8] hover:bg-[#00B4D8]/10"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
           </div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Media Preview with AI Visualization */}
-          <div className="space-y-6">
-            <Card className={isAnalyzing ? 'animate-pulse-glow' : ''}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>عرض العينة</span>
-                  {isVideo && (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={togglePlay}>
-                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={restart}>
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative bg-black rounded-lg overflow-hidden">
-                  {isVideo ? (
-                    <video
-                      ref={videoRef}
-                      src={mediaUrl}
-                      className="w-full h-auto max-h-96 object-contain"
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onEnded={() => setIsPlaying(false)}
-                      controls={false}
-                    />
-                  ) : (
-                    <img
-                      src={mediaUrl}
-                      alt="Sample"
-                      className="w-full h-auto max-h-96 object-contain"
-                    />
-                  )}
-                  
-                  {/* AI Detection Overlay */}
-                  {isAnalyzing && (
-                    <div className="absolute inset-0">
-                      {detectionBoxes.map((box, index) => (
-                        <div
-                          key={index}
-                          className="absolute border-2 border-primary animate-pulse"
-                          style={{
-                            left: `${box.x}%`,
-                            top: `${box.y}%`,
-                            width: `${box.width}%`,
-                            height: `${box.height}%`,
-                          }}
-                        />
-                      ))}
-                      <div className="absolute top-4 left-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
-                        <Zap className="w-4 h-4 inline mr-1" />
-                        AI يقوم بالتحليل...
-                      </div>
-                    </div>
-                  )}
+        {/* Main Results */}
+        <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+          <CardHeader>
+            <CardTitle className="text-white text-center">النتائج الرئيسية</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-[#00B4D8] mb-2">
+                  {result.sperm_count.toLocaleString()}
                 </div>
-              </CardContent>
-            </Card>
+                <div className="text-gray-400">عدد الحيوانات المنوية</div>
+                <div className="text-xs text-gray-500 mt-1">خلية/مل</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white mb-2">
+                  {result.motility_percentage.toFixed(1)}%
+                </div>
+                <div className="text-gray-400">نسبة الحركة</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {result.motility_percentage > 40 ? 'طبيعي' : 'منخفض'}
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white mb-2">
+                  {result.morphology_percentage.toFixed(1)}%
+                </div>
+                <div className="text-gray-400">الشكل الطبيعي</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {result.morphology_percentage > 30 ? 'طبيعي' : 'منخفض'}
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white mb-2">
+                  {result.concentration.toFixed(1)}
+                </div>
+                <div className="text-gray-400">التركيز</div>
+                <div className="text-xs text-gray-500 mt-1">مليون/مل</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Analysis Progress */}
-            {isAnalyzing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">التقدم في التحليل</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>معالجة الإطارات</span>
-                      <span>{Math.round(analysisProgress)}%</span>
-                    </div>
-                    <Progress value={analysisProgress} className="bg-muted progress-bar" />
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>الوقت المتبقي: {timeRemaining.toFixed(1)}s</span>
-                    <span>{Math.round(analysisProgress * 0.3)} إطار تم معالجته</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+        {/* Analysis Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+            <CardHeader>
+              <CardTitle className="text-white">تفاصيل التحليل</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-gray-400">دقة التحليل</span>
+                <span className="text-white font-bold">{result.confidence_score.toFixed(1)}%</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">جودة الصورة</span>
+                <Badge className={getQualityColor(result.image_quality)}>
+                  {getQualityText(result.image_quality)}
+                </Badge>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">مدة التحليل</span>
+                <span className="text-white">{result.analysis_duration.toFixed(1)} ثانية</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">تاريخ التحليل</span>
+                <span className="text-white">
+                  {new Date(result.created_at).toLocaleDateString('ar')}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Results Panel */}
-          <div className="space-y-6">
-            {result ? (
-              <Card className="animate-slide-up">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-primary">
-                    <Eye className="w-5 h-5" />
-                    النتائج النهائية
-                  </CardTitle>
-                  <CardDescription>تم الانتهاء من التحليل بنجاح</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Main Result */}
-                  <div className="text-center p-6 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg">
-                    <div className="text-4xl font-bold text-primary mb-2">
-                      {result.sperm_count.toLocaleString()}
-                    </div>
-                    <div className="text-lg text-muted-foreground mb-3">
-                      خلية منوية تم اكتشافها
-                    </div>
-                    <Badge variant="secondary" className="bg-primary/20 text-primary">
-                      دقة التحليل: {Math.round(result.confidence || 0)}%
-                    </Badge>
-                  </div>
+          <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+            <CardHeader>
+              <CardTitle className="text-white">معلومات الملف</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-gray-400">اسم الملف</span>
+                <span className="text-white text-sm truncate max-w-32">
+                  {result.file_name}
+                </span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">نوع الملف</span>
+                <span className="text-white">{result.file_type}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">حجم الملف</span>
+                <span className="text-white">
+                  {(result.file_size / (1024 * 1024)).toFixed(2)} MB
+                </span>
+              </div>
+              
+              {result.detected_objects && result.detected_objects.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">كائنات مكتشفة</span>
+                  <span className="text-white">{result.detected_objects.length}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-                  {/* Detailed Metrics */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
-                        {(result.analysis_time || 0).toFixed(1)}s
-                      </div>
-                      <div className="text-sm text-muted-foreground">وقت التحليل</div>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <div className="text-lg font-bold text-primary capitalize">
-                        {result.image_quality || 'جيد'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">جودة العينة</div>
-                    </div>
-                  </div>
-
-                  {/* Clinical Reference */}
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
-                    <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">
-                      المرجع الطبي
-                    </h4>
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      التركيز الطبيعي للحيوانات المنوية: 15+ مليون/مل. هذا التحليل لأغراض البحث فقط 
-                      ولا يجب أن يحل محل التقييم الطبي المتخصص.
-                    </p>
-                  </div>
-
-                  <Button 
-                    onClick={() => navigate('/')} 
-                    className="w-full"
-                    size="lg"
-                  >
-                    تحليل عينة جديدة
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="border-dashed">
-                <CardHeader>
-                  <CardTitle className="text-muted-foreground">انتظار النتائج</CardTitle>
-                  <CardDescription>
-                    يتم معالجة العينة بواسطة الذكاء الاصطناعي
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                      <p className="text-muted-foreground">معالجة البيانات...</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            onClick={handleExportPDF}
+            className="bg-[#00B4D8] hover:bg-[#00B4D8]/80"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            تصدير التقرير
+          </Button>
+          
+          <Button
+            onClick={() => navigate('/graphs')}
+            variant="outline"
+            className="border-[#00B4D8] text-[#00B4D8] hover:bg-[#00B4D8]/10"
+          >
+            عرض الرسوم البيانية
+          </Button>
+          
+          <Button
+            onClick={() => navigate('/analytics')}
+            variant="outline"
+            className="border-white text-white hover:bg-white/10"
+          >
+            عرض جميع النتائج
+          </Button>
         </div>
       </div>
     </div>

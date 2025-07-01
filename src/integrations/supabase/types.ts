@@ -9,7 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      sperm_analysis_results: {
+        Row: {
+          analysis_duration: number
+          concentration: number | null
+          confidence_score: number
+          created_at: string
+          detected_objects: Json | null
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          image_quality: string | null
+          morphology_percentage: number | null
+          motility_percentage: number | null
+          sperm_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_duration: number
+          concentration?: number | null
+          confidence_score: number
+          created_at?: string
+          detected_objects?: Json | null
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id?: string
+          image_quality?: string | null
+          morphology_percentage?: number | null
+          motility_percentage?: number | null
+          sperm_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_duration?: number
+          concentration?: number | null
+          confidence_score?: number
+          created_at?: string
+          detected_objects?: Json | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          image_quality?: string | null
+          morphology_percentage?: number | null
+          motility_percentage?: number | null
+          sperm_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

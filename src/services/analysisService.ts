@@ -3,9 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface AnalysisResult {
   sperm_count: number;
-  confidence: number;
-  analysis_time: number;
+  motility_percentage: number;
+  morphology_percentage: number;
+  concentration: number;
+  confidence_score: number;
+  analysis_duration: number;
   image_quality: 'excellent' | 'good' | 'fair' | 'poor';
+  detected_objects?: any[];
 }
 
 export interface SavedAnalysisResult extends AnalysisResult {
@@ -13,141 +17,140 @@ export interface SavedAnalysisResult extends AnalysisResult {
   file_name: string;
   file_type: string;
   file_size: number;
+  file_url: string;
   created_at: string;
 }
 
 class AnalysisService {
-  async uploadFile(file: File, userId: string): Promise<string> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    
+  async analyzeFile(file: File, userId: string): Promise<SavedAnalysisResult> {
     try {
-      const { data, error } = await supabase.storage
-        .from('analysis_files')
-        .upload(fileName, file);
+      // Create FormData for the edge function
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+
+      // Call the Supabase edge function
+      const { data, error } = await supabase.functions.invoke('analyze-sperm', {
+        body: formData,
+      });
 
       if (error) {
-        throw new Error(`فشل في رفع الملف: ${error.message}`);
+        console.error('Edge function error:', error);
+        throw new Error(`Analysis failed: ${error.message}`);
       }
 
-      return data.path;
-    } catch (error: any) {
-      // إذا فشل الرفع لقاعدة البيانات، سنعيد مسار وهمي
-      console.warn('File upload failed, using mock path:', error.message);
-      return `mock/${userId}/${file.name}`;
-    }
-  }
+      if (!data.success) {
+        throw new Error(`Analysis failed: ${data.error || 'Unknown error'}`);
+      }
 
-  async analyzeFile(file: File): Promise<AnalysisResult> {
-    const startTime = Date.now();
-    
-    // محاكاة تحليل حقيقي بناءً على نوع الملف وحجمه
-    const analysisTime = Math.max(2, Math.min(10, file.size / (1024 * 1024) * 0.5));
-    
-    // انتظار وقت التحليل الفعلي
-    await new Promise(resolve => setTimeout(resolve, analysisTime * 1000));
-    
-    // تحليل بناءً على خصائص الملف الفعلية
-    const result = this.performAnalysis(file);
-    
-    const actualAnalysisTime = (Date.now() - startTime) / 1000;
-    
-    return {
-      ...result,
-      analysis_time: actualAnalysisTime
-    };
-  }
-
-  private performAnalysis(file: File): Omit<AnalysisResult, 'analysis_time'> {
-    // تحليل بناءً على حجم الملف ونوعه
-    const fileSizeMB = file.size / (1024 * 1024);
-    
-    // تحديد جودة الصورة/الفيديو بناءً على الحجم
-    let image_quality: 'excellent' | 'good' | 'fair' | 'poor';
-    if (fileSizeMB > 50) image_quality = 'excellent';
-    else if (fileSizeMB > 20) image_quality = 'good';
-    else if (fileSizeMB > 5) image_quality = 'fair';
-    else image_quality = 'poor';
-    
-    // تحديد عدد الحيوانات المنوية بناءً على جودة الملف
-    const baseCount = image_quality === 'excellent' ? 150 : 
-                     image_quality === 'good' ? 100 : 
-                     image_quality === 'fair' ? 50 : 20;
-    
-    const sperm_count = Math.floor(baseCount + (Math.random() * 100) - 50);
-    
-    // تحديد مستوى الثقة بناءً على الجودة
-    const baseConfidence = image_quality === 'excellent' ? 95 : 
-                          image_quality === 'good' ? 85 : 
-                          image_quality === 'fair' ? 75 : 60;
-    
-    const confidence = Math.max(50, baseConfidence + (Math.random() * 10) - 5);
-    
-    return {
-      sperm_count: Math.max(0, sperm_count),
-      confidence: Math.round(confidence * 100) / 100,
-      image_quality
-    };
-  }
-
-  async saveAnalysisResult(
-    userId: string,
-    file: File,
-    result: AnalysisResult
-  ): Promise<SavedAnalysisResult> {
-    // محاولة حفظ النتائج في قاعدة البيانات
-    try {
-      // سنحفظ في localStorage كبديل مؤقت
-      const savedResult: SavedAnalysisResult = {
-        id: crypto.randomUUID(),
+      return {
+        id: data.data.id,
+        sperm_count: data.data.sperm_count,
+        motility_percentage: data.data.motility_percentage,
+        morphology_percentage: data.data.morphology_percentage,
+        concentration: data.data.concentration,
+        confidence_score: data.data.confidence_score,
+        analysis_duration: data.data.analysis_duration,
+        image_quality: data.data.image_quality,
+        detected_objects: data.data.detected_objects || [],
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        sperm_count: result.sperm_count,
-        confidence: result.confidence,
-        analysis_time: result.analysis_time,
-        image_quality: result.image_quality,
+        file_url: data.data.file_url,
         created_at: new Date().toISOString()
       };
 
-      // حفظ في localStorage
-      const existingResults = this.getLocalStorageResults(userId);
-      existingResults.push(savedResult);
-      localStorage.setItem(`analysis_results_${userId}`, JSON.stringify(existingResults));
-
-      return savedResult;
     } catch (error: any) {
-      throw new Error(`فشل في حفظ نتائج التحليل: ${error.message}`);
+      console.error('Analysis service error:', error);
+      throw new Error(`Failed to analyze file: ${error.message}`);
     }
   }
 
   async getUserAnalysisHistory(userId: string): Promise<SavedAnalysisResult[]> {
     try {
-      // محاولة جلب من localStorage كبديل مؤقت
-      return this.getLocalStorageResults(userId);
+      const { data, error } = await supabase
+        .from('sperm_analysis_results')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Failed to fetch analysis history: ${error.message}`);
+      }
+
+      return data.map(result => ({
+        id: result.id,
+        sperm_count: result.sperm_count,
+        motility_percentage: result.motility_percentage || 0,
+        morphology_percentage: result.morphology_percentage || 0,
+        concentration: result.concentration || 0,
+        confidence_score: result.confidence_score,
+        analysis_duration: result.analysis_duration,
+        image_quality: result.image_quality as 'excellent' | 'good' | 'fair' | 'poor',
+        detected_objects: result.detected_objects || [],
+        file_name: result.file_name,
+        file_type: result.file_type,
+        file_size: result.file_size,
+        file_url: result.file_url,
+        created_at: result.created_at
+      }));
+
     } catch (error: any) {
       console.error('Error fetching analysis history:', error);
       return [];
     }
   }
 
-  private getLocalStorageResults(userId: string): SavedAnalysisResult[] {
+  async deleteAnalysisResult(resultId: string): Promise<void> {
     try {
-      const stored = localStorage.getItem(`analysis_results_${userId}`);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
+      const { error } = await supabase
+        .from('sperm_analysis_results')
+        .delete()
+        .eq('id', resultId);
+
+      if (error) {
+        throw new Error(`Failed to delete analysis result: ${error.message}`);
+      }
+    } catch (error: any) {
+      console.error('Error deleting analysis result:', error);
+      throw error;
     }
   }
 
-  async deleteAnalysisResult(resultId: string, userId: string): Promise<void> {
+  async getAnalysisById(resultId: string): Promise<SavedAnalysisResult | null> {
     try {
-      // حذف من localStorage
-      const existingResults = this.getLocalStorageResults(userId);
-      const filteredResults = existingResults.filter(result => result.id !== resultId);
-      localStorage.setItem(`analysis_results_${userId}`, JSON.stringify(filteredResults));
+      const { data, error } = await supabase
+        .from('sperm_analysis_results')
+        .select('*')
+        .eq('id', resultId)
+        .single();
+
+      if (error) {
+        console.error('Database error:', error);
+        return null;
+      }
+
+      return {
+        id: data.id,
+        sperm_count: data.sperm_count,
+        motility_percentage: data.motility_percentage || 0,
+        morphology_percentage: data.morphology_percentage || 0,
+        concentration: data.concentration || 0,
+        confidence_score: data.confidence_score,
+        analysis_duration: data.analysis_duration,
+        image_quality: data.image_quality as 'excellent' | 'good' | 'fair' | 'poor',
+        detected_objects: data.detected_objects || [],
+        file_name: data.file_name,
+        file_type: data.file_type,
+        file_size: data.file_size,
+        file_url: data.file_url,
+        created_at: data.created_at
+      };
+
     } catch (error: any) {
-      throw new Error(`فشل في حذف نتيجة التحليل: ${error.message}`);
+      console.error('Error fetching analysis by ID:', error);
+      return null;
     }
   }
 }

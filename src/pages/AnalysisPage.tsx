@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Download, Eye, Loader2 } from 'lucide-react';
+import { ArrowRight, Download, Eye, Loader2, Activity, FlaskConical } from 'lucide-react';
 
 const AnalysisPage = () => {
   const location = useLocation();
@@ -51,6 +50,7 @@ const AnalysisPage = () => {
     setTimeElapsed(0);
 
     try {
+      console.log('بدء التحليل للملف:', file.name);
       const result = await analysisService.analyzeFile(file, user.id);
       
       setProgress(100);
@@ -62,7 +62,7 @@ const AnalysisPage = () => {
       });
 
     } catch (error: any) {
-      console.error('Analysis failed:', error);
+      console.error('فشل في التحليل:', error);
       toast({
         title: "فشل في التحليل",
         description: error.message || "حدث خطأ أثناء التحليل",
@@ -96,6 +96,18 @@ const AnalysisPage = () => {
       case 'fair': return 'متوسطة';
       case 'poor': return 'ضعيفة';
       default: return 'غير محدد';
+    }
+  };
+
+  const getWHOClassificationText = (classification: string) => {
+    switch (classification) {
+      case 'normozoospermia': return 'طبيعي';
+      case 'oligozoospermia': return 'قلة عدد';
+      case 'asthenozoospermia': return 'ضعف حركة';
+      case 'teratozoospermia': return 'تشوه شكلي';
+      case 'oligoasthenoteratozoospermia': return 'مشترك';
+      case 'azoospermia': return 'انعدام';
+      default: return classification;
     }
   };
 
@@ -188,63 +200,168 @@ const AnalysisPage = () => {
           </CardContent>
         </Card>
 
-        {/* Analysis Results */}
+        {/* Enhanced Analysis Results */}
         {analysisResult && (
-          <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
-            <CardHeader>
-              <CardTitle className="text-white">نتائج التحليل الأولية</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-[#00B4D8] mb-1">
-                    {analysisResult.sperm_count.toLocaleString()}
+          <div className="space-y-6">
+            {/* Main Results Card */}
+            <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <FlaskConical className="w-5 h-5" />
+                  نتائج التحليل المفصلة
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-[#00B4D8] mb-1">
+                      {analysisResult.sperm_count.toLocaleString()}
+                    </div>
+                    <div className="text-sm text-gray-400">عدد الخلايا المنوية</div>
                   </div>
-                  <div className="text-sm text-gray-400">عدد الخلايا المنوية</div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white mb-1">
-                    {analysisResult.motility_percentage}%
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white mb-1">
+                      {analysisResult.concentration}M/ml
+                    </div>
+                    <div className="text-sm text-gray-400">التركيز</div>
                   </div>
-                  <div className="text-sm text-gray-400">الحركة</div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white mb-1">
-                    {analysisResult.confidence_score}%
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white mb-1">
+                      {analysisResult.volume_ml}ml
+                    </div>
+                    <div className="text-sm text-gray-400">الحجم</div>
                   </div>
-                  <div className="text-sm text-gray-400">دقة التحليل</div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white mb-1">
+                      {analysisResult.ph_level}
+                    </div>
+                    <div className="text-sm text-gray-400">درجة الحموضة</div>
+                  </div>
                 </div>
-                
-                <div className="text-center">
-                  <Badge className={getQualityColor(analysisResult.image_quality)}>
-                    {getQualityText(analysisResult.image_quality)}
-                  </Badge>
-                  <div className="text-sm text-gray-400 mt-1">جودة الصورة</div>
-                </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="flex gap-4 justify-center">
-                <Button 
-                  onClick={handleViewResults}
-                  className="bg-[#00B4D8] hover:bg-[#00B4D8]/80"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  عرض النتائج التفصيلية
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/graphs')}
-                  className="border-[#00B4D8] text-[#00B4D8] hover:bg-[#00B4D8]/10"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  عرض الرسوم البيانية
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Motility Analysis Card */}
+            <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  تحليل الحركة المفصل
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-500 mb-2">
+                      {analysisResult.progressive_motility_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400 mb-2">الحركة التقدمية</div>
+                    <Progress value={analysisResult.progressive_motility_percentage} className="h-2" />
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-500 mb-2">
+                      {analysisResult.non_progressive_motility_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400 mb-2">الحركة غير التقدمية</div>
+                    <Progress value={analysisResult.non_progressive_motility_percentage} className="h-2" />
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-500 mb-2">
+                      {analysisResult.immotile_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400 mb-2">عديمة الحركة</div>
+                    <Progress value={analysisResult.immotile_percentage} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Morphology Analysis Card */}
+            <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+              <CardHeader>
+                <CardTitle className="text-white">تحليل التشكل المورفولوجي</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-500 mb-1">
+                      {analysisResult.morphology_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400">الشكل الطبيعي</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-orange-500 mb-1">
+                      {analysisResult.head_defects_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400">عيوب الرأس</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-red-500 mb-1">
+                      {analysisResult.midpiece_defects_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400">عيوب الوسط</div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-purple-500 mb-1">
+                      {analysisResult.tail_defects_percentage}%
+                    </div>
+                    <div className="text-sm text-gray-400">عيوب الذيل</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Classification and Quality */}
+            <Card className="bg-[#1B2A3A] border-[#00B4D8]/20">
+              <CardContent className="pt-6">
+                <div className="flex flex-wrap gap-4 justify-center items-center">
+                  <Badge className="text-lg px-4 py-2 bg-blue-500">
+                    التصنيف: {getWHOClassificationText(analysisResult.who_classification)}
+                  </Badge>
+                  
+                  <Badge className={`text-lg px-4 py-2 ${getQualityColor(analysisResult.image_quality)}`}>
+                    جودة الصورة: {getQualityText(analysisResult.image_quality)}
+                  </Badge>
+                  
+                  <Badge className="text-lg px-4 py-2 bg-green-500">
+                    الحيوية: {analysisResult.vitality_percentage}%
+                  </Badge>
+                  
+                  <Badge className="text-lg px-4 py-2 bg-purple-500">
+                    دقة التحليل: {analysisResult.confidence_score}%
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
+              <Button 
+                onClick={handleViewResults}
+                className="bg-[#00B4D8] hover:bg-[#00B4D8]/80"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                عرض النتائج التفصيلية
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/graphs')}
+                className="border-[#00B4D8] text-[#00B4D8] hover:bg-[#00B4D8]/10"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                عرض الرسوم البيانية
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

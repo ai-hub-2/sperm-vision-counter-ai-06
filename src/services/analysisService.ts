@@ -1,7 +1,18 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
-export interface AnalysisResult {
+export interface DetailedMotilityAnalysis {
+  progressive_motility_percentage: number;
+  non_progressive_motility_percentage: number;
+  immotile_percentage: number;
+}
+
+export interface MorphologyAnalysis {
+  head_defects_percentage: number;
+  midpiece_defects_percentage: number;
+  tail_defects_percentage: number;
+}
+
+export interface AnalysisResult extends DetailedMotilityAnalysis, MorphologyAnalysis {
   sperm_count: number;
   motility_percentage: number;
   morphology_percentage: number;
@@ -10,6 +21,12 @@ export interface AnalysisResult {
   analysis_duration: number;
   image_quality: 'excellent' | 'good' | 'fair' | 'poor';
   detected_objects?: any[];
+  vitality_percentage: number;
+  volume_ml: number;
+  ph_level: number;
+  leucocytes_count: number;
+  who_classification: 'normozoospermia' | 'oligozoospermia' | 'asthenozoospermia' | 'teratozoospermia' | 'oligoasthenoteratozoospermia' | 'azoospermia';
+  analysis_notes?: string;
 }
 
 export interface SavedAnalysisResult extends AnalysisResult {
@@ -24,45 +41,66 @@ export interface SavedAnalysisResult extends AnalysisResult {
 class AnalysisService {
   async analyzeFile(file: File, userId: string): Promise<SavedAnalysisResult> {
     try {
+      console.log('Starting analysis for file:', file.name);
+      
       // Create FormData for the edge function
       const formData = new FormData();
       formData.append('file', file);
       formData.append('userId', userId);
 
-      // Call the Supabase edge function
+      console.log('Calling Supabase edge function...');
+      
+      // Call the Supabase edge function with proper error handling
       const { data, error } = await supabase.functions.invoke('analyze-sperm', {
         body: formData,
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(`Analysis failed: ${error.message}`);
+        throw new Error(`تحليل فاشل: ${error.message || 'خطأ في الخادم'}`);
       }
 
-      if (!data.success) {
-        throw new Error(`Analysis failed: ${data.error || 'Unknown error'}`);
+      if (!data || !data.success) {
+        console.error('Analysis failed:', data);
+        throw new Error(`تحليل فاشل: ${data?.error || 'استجابة غير صحيحة من الخادم'}`);
       }
+
+      console.log('Analysis successful:', data.data);
 
       return {
         id: data.data.id,
-        sperm_count: data.data.sperm_count,
-        motility_percentage: data.data.motility_percentage,
-        morphology_percentage: data.data.morphology_percentage,
-        concentration: data.data.concentration,
-        confidence_score: data.data.confidence_score,
-        analysis_duration: data.data.analysis_duration,
-        image_quality: data.data.image_quality,
+        sperm_count: data.data.sperm_count || 0,
+        motility_percentage: data.data.motility_percentage || 0,
+        morphology_percentage: data.data.morphology_percentage || 0,
+        concentration: data.data.concentration || 0,
+        confidence_score: data.data.confidence_score || 0,
+        analysis_duration: data.data.analysis_duration || 0,
+        image_quality: data.data.image_quality || 'good',
         detected_objects: data.data.detected_objects || [],
+        progressive_motility_percentage: data.data.progressive_motility_percentage || 0,
+        non_progressive_motility_percentage: data.data.non_progressive_motility_percentage || 0,
+        immotile_percentage: data.data.immotile_percentage || 0,
+        vitality_percentage: data.data.vitality_percentage || 0,
+        head_defects_percentage: data.data.head_defects_percentage || 0,
+        midpiece_defects_percentage: data.data.midpiece_defects_percentage || 0,
+        tail_defects_percentage: data.data.tail_defects_percentage || 0,
+        volume_ml: data.data.volume_ml || 0,
+        ph_level: data.data.ph_level || 0,
+        leucocytes_count: data.data.leucocytes_count || 0,
+        who_classification: data.data.who_classification || 'normozoospermia',
+        analysis_notes: data.data.analysis_notes || '',
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        file_url: data.data.file_url,
+        file_url: data.data.file_url || '',
         created_at: new Date().toISOString()
       };
 
     } catch (error: any) {
       console.error('Analysis service error:', error);
-      throw new Error(`Failed to analyze file: ${error.message}`);
+      throw new Error(`فشل في تحليل الملف: ${error.message}`);
     }
   }
 

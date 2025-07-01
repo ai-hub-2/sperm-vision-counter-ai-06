@@ -1,0 +1,33 @@
+
+name: sperm-analysis-ai-app
+services:
+  - name: sperm-analyzer-frontend
+    type: web
+    git:
+      branch: main
+      build_command: npm ci && npm run build
+      run_command: npm run preview -- --host 0.0.0.0 --port 4173
+    instance_type: nano
+    ports:
+      - port: 4173
+        protocol: http
+    env:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_SUPABASE_URL
+        value: https://bhczvusibhuvuvgwoezb.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: your_supabase_anon_key_here
+    health_check:
+      http:
+        path: /
+        timeout: 30
+        interval: 60
+        healthy_threshold: 2
+        unhealthy_threshold: 3
+    auto_deploy: true
+    regions:
+      - fra
+    scaling:
+      min: 1
+      max: 2
